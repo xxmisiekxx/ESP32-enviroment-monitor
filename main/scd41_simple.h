@@ -13,6 +13,7 @@ typedef struct {
 } scd41_t;                       // structure to comunicate with sensor
 
 esp_err_t scd41_init(scd41_t* s);
+esp_err_t scd41_wakeup(scd41_t* s);
 esp_err_t scd41_start_periodic_measurement(scd41_t* s);
 esp_err_t scd41_stop_periodic_measurement(scd41_t* s);
 esp_err_t scd41_data_ready(scd41_t* s, bool* ready);
