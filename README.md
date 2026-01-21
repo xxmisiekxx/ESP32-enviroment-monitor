@@ -1,69 +1,71 @@
-# ESP32-S3 Template
+# Climate Logger (ESP32-S3)
 
-Reusable ESP-IDF template for ESP32-S3 with 16MB flash and 8MB octal PSRAM @ 80MHz.
+ESP-IDF project for an ESP32-S3 that reads multiple environmental sensors on a shared I2C bus and displays the values on an SSD1306 OLED.
 
-## Prereqs
+## Features
 
-Export the ESP-IDF environment:
+- SHT45 temperature and humidity.
+- SCD41 CO2 + temperature + humidity.
+- SGP30 eCO2 + TVOC with humidity compensation from SHT45.
+- SSD1306 128x64 OLED display with a simple text layout.
 
-```
-source /path/to/esp-idf/export.sh
-# example:
-# source /home/galibard/re/esp32s3/esp-idf/export.sh
-```
+## Hardware
 
-## Quick start (recommended)
+- Target: ESP32-S3 (tested on ESP32-S3, ESP-IDF).
+- I2C pins:
+  - SDA: GPIO41
+  - SCL: GPIO42
+- I2C devices:
+  - SSD1306 OLED @ 0x3C
+  - SHT45 @ 0x44
+  - SCD41 @ 0x62
+  - SGP30 @ 0x58
 
-From the directory that contains this template:
+Note: External I2C pull-ups are recommended for reliable operation.
 
-```
-./new_from_template.sh /path/to/my_new_project my_project_name
-```
-
-This copies the template, renames the project in `CMakeLists.txt`, updates the banner in `main/main.c`, and opens VS Code if available.
-
-## Manual start
-
-Copy the template:
-
-```
-cp -a esp32s3_template my_new_project
-```
-
-Rename the project in `CMakeLists.txt`:
+## Display Layout
 
 ```
-project(my_project_name)
+SHT45 TEMP: xx.xC
+SHT45 HUM : xx.x%
+---------------------
+SCD41 CO2 : xxxxppm
+SCD41 TEMP: xx.xC
+SCD41 HUM : xx.x%
+---------------------
+eCO2: xxxx TVOC: xxxx
 ```
 
-Optional: update the log TAG/banner in `main/main.c`.
+## Wiring (I2C)
 
-## Build and flash
+All sensors share the same I2C bus. Power at 3.3V (unless your breakout specifies otherwise).
 
 ```
-cd /path/to/my_new_project
+ESP32-S3            OLED / SHT45 / SCD41 / SGP30
+---------           ------------------------------
+3V3  ----------->   VCC
+GND  ----------->   GND
+GPIO41 (SDA) --->   SDA
+GPIO42 (SCL) --->   SCL
+```
+
+If your breakouts do not include pull-ups, add 4.7k-10k resistors from SDA/SCL to 3.3V.
+
+## Build and Flash
+
+```
 idf.py set-target esp32s3
 idf.py build flash monitor
 ```
 
-Specify the serial port when flashing/monitoring:
+Specify the serial port if needed:
 
 ```
 idf.py -p /dev/ttyUSB0 flash monitor
 ```
 
-## Verify
+## Notes
 
-In the boot log you should see:
-
-- SPI Flash Size : 16MB
-- Found 8MB PSRAM device
-- Speed: 80MHz
-- template: ESP32-S3 template app started (or your renamed banner)
-
-## Hardware defaults
-
-- Flash size: 16MB
-- PSRAM: 8MB, octal mode @ 80MHz
-
-Defaults live in `sdkconfig.defaults`. Update that file (not `sdkconfig`) if you change hardware.
+- SCD41 is a real NDIR CO2 sensor; SGP30 reports eCO2 based on VOCs and will not match SCD41.
+- SGP30 needs a long warm-up/baseline period for stable readings.
+- Humidity compensation for SGP30 uses absolute humidity derived from SHT45 readings.
