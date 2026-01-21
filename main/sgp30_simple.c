@@ -5,6 +5,7 @@
 
 #define SGP30_CMD_IAQ_INIT 0x2003
 #define SGP30_CMD_MEASURE_IAQ 0x2008
+#define SGP30_CMD_SET_ABS_HUM 0x2061
 #define SGP30_CMD_DELAY_US 15000
 #define SGP30_I2C_SPEED_HZ 100000
 #define SGP30_SCL_WAIT_US 10000
@@ -88,6 +89,28 @@ esp_err_t sgp30_init(sgp30_t* s) {
 esp_err_t sgp30_iaq_init(sgp30_t* s) {
     // The SGP30 expects this command once after power-up.
     return sgp30_write_cmd(s, SGP30_CMD_IAQ_INIT);
+}
+
+// Set humidity compensation using absolute humidity in g/m^3.
+esp_err_t sgp30_set_absolute_humidity(sgp30_t* s, float abs_humidity_gm3) {
+    if (abs_humidity_gm3 < 0.0f) {
+        abs_humidity_gm3 = 0.0f;
+    }
+    if (abs_humidity_gm3 > 256.0f) {
+        abs_humidity_gm3 = 256.0f; // Cap to avoid overflow of the 8.8 fixed-point value.
+    }
+
+    uint16_t ah_fixed = (uint16_t)(abs_humidity_gm3 * 256.0f + 0.5f);
+    uint8_t payload[2] = {(uint8_t)(ah_fixed >> 8), (uint8_t)(ah_fixed & 0xFF)};
+    uint8_t crc = sgp30_crc8(payload, sizeof(payload));
+
+    uint8_t buf[5] = {
+        (uint8_t)(SGP30_CMD_SET_ABS_HUM >> 8), (uint8_t)(SGP30_CMD_SET_ABS_HUM & 0xFF),
+        payload[0], payload[1], crc,
+    };
+
+    ESP_RETURN_ON_ERROR(sgp30_add_device(s), "", "");
+    return i2c_master_transmit(s->dev, buf, sizeof(buf), 100);
 }
 
 // Read eCO2 (ppm) and TVOC (ppb) from the sensor.

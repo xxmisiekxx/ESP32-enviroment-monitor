@@ -13,4 +13,5 @@ typedef struct {
 
 esp_err_t sgp30_init(sgp30_t* s);
 esp_err_t sgp30_iaq_init(sgp30_t* s);
+esp_err_t sgp30_set_absolute_humidity(sgp30_t* s, float abs_humidity_gm3);
 esp_err_t sgp30_measure_iaq(sgp30_t* s, uint16_t* eco2_ppm, uint16_t* tvoc_ppb);

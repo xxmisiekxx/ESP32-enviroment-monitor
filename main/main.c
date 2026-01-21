@@ -5,6 +5,7 @@
 #include "scd41_simple.h"
 #include "sgp30_simple.h"
 #include "ssd1306_simple.h"
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -37,6 +38,14 @@ static uint8_t sht4x_crc8(const uint8_t* data, size_t len) {
         }
     }
     return crc;
+}
+
+// Calculate absolute humidity in g/m^3 from temperature and relative humidity.
+static float abs_humidity_gm3(float temp_c, float rh_percent) {
+    float rh = rh_percent * 0.01f;
+    float svp = 6.112f * expf((17.62f * temp_c) / (243.12f + temp_c));
+    float vapor_pressure = rh * svp;
+    return 216.7f * (vapor_pressure / (273.15f + temp_c));
 }
 
 static esp_err_t sht45_read(i2c_master_dev_handle_t dev, float* temp_c, float* rh) {
@@ -193,11 +202,14 @@ void app_main(void) {
         static uint16_t sgp_tvoc = 0;
         static bool sgp_valid = false;
 
-#if ENABLE_SHT45
+        bool sht_ok = false;
         float temp_c = 0.0f;
         float rh = 0.0f;
+
+#if ENABLE_SHT45
         esp_err_t ret = sht45_read(sht_dev, &temp_c, &rh);
         if (ret == ESP_OK) {
+            sht_ok = true;
             char temp_line[22];
             char hum_line[22];
             snprintf(temp_line, sizeof(temp_line), "TEMP: %5.1fC", temp_c);
@@ -252,6 +264,14 @@ void app_main(void) {
                 oled_write_line(&oled, 4, "CHECK WIRING");
                 oled_write_line(&oled, 5, " ");
                 ESP_LOGW(TAG, "SCD41 read failed: %s", esp_err_to_name(scd_ret));
+            }
+        }
+
+        if (sht_ok) {
+            float ah = abs_humidity_gm3(temp_c, rh);
+            esp_err_t ah_ret = sgp30_set_absolute_humidity(&sgp, ah);
+            if (ah_ret != ESP_OK) {
+                ESP_LOGW(TAG, "SGP30 humidity set failed: %s", esp_err_to_name(ah_ret));
             }
         }
 
