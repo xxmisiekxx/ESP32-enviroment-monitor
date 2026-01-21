@@ -1,4 +1,4 @@
-# Climate Logger (ESP32-S3)
+# ESP32-enviroment-monitor (ESP32-S3)
 
 ESP-IDF project for an ESP32-S3 that reads multiple environmental sensors on a shared I2C bus and displays the values on an SSD1306 OLED.
 
